@@ -9,3 +9,4 @@ Simple demos made in a-frame framework.
 ## Demos
 * [Hello World](http://localhost:3000/hello-world/)
 * [Panorama](http://localhost:3000/panorama/)
+* [Attack on Alderaan](http://localhost:3000/attack-on-alderaan/)

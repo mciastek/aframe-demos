@@ -1,0 +1,204 @@
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Attack on Alderaan</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/0.2.0/aframe.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/1.19.0/TweenMax.min.js"></script>
+</head>
+<body>
+  <a-scene>
+    <a-assets>
+      <a-asset-item id="tie" src="models/tie-fighter/starwars-tie-fighter.dae"></a-asset-item>
+      <img id="destroyer" src="images/destroyer.png">
+      <img id="destroyer-2" src="images/destroyer-2.png">
+      <img id="death-star" src="images/death-star.png">
+      <img id="alderaan" src="images/alderaan.png">
+      <img id="background" src="images/space-bg.jpg">
+
+      <audio id="tie-sound" src="sounds/tie_fighter.wav"></audio>
+      <audio id="destroyer-sound" src="sounds/destroyer_engines.wav"></audio>
+    </a-assets>
+
+    <a-entity position="0 0 10">
+      <a-camera id="camera"></a-camera>
+    </a-entity>
+
+    <a-light color="#020202" position="1 1 0"></a-light>
+
+    <a-collada-model id="fighter" src="#tie" scale="0.5 0.5 0.5" position="0 10 -30" visible="false" sound="src: sounds/tie_fighter.wav"></a-collada-model>
+
+    <a-image id="destroyer-left" src="#destroyer-2" scale="6 6" position="-10 -2 -3" sound="src: sounds/destroyer_engines.wav; volume: 0.25; loop: true"></a-image>
+    <a-image id="destroyer-right" src="#destroyer" scale="10 10" position="6 -2 -2" sound="src: sounds/destroyer_engines.wav; volume: 0.35; autoplay: true; loop: true"></a-image>
+
+    <a-image src="#death-star" scale="6 6" position="3 -2 20"></a-image>
+    <a-image src="#alderaan" scale="20 20" position="-15 -7 25"></a-image>
+
+    <a-sky src="#background"></a-sky>
+  </a-scene>
+
+  <script>
+    (function(window, document, undefined) {
+      var scene = document.querySelector('a-scene');
+      var fighter = document.querySelector('#fighter');
+      var destroyerLeft = document.querySelector('#destroyer-left');
+      var destroyerRight = document.querySelector('#destroyer-right');
+
+      /**
+       * Create simple fighter from boxes, cylinders and sphere
+       * @param  {Object} attrs
+       * @return {DOMElement}
+       */
+
+      var simpleFighter = function(attrs) {
+        var base = document.createElement('a-entity');
+
+        if (attrs) {
+          for (var a in attrs) {
+            base.setAttribute(a, attrs[a]);
+          }
+        }
+
+        base.innerHTML = '<a-box color="#2E2E28" depth="2" height="2" width="0.05" position="-0.7 0 0" shader="flat"></a-box>' +
+          '<a-cylinder color="#23231e" height="0.3" radius="0.0" rotation="0 0 90" position="-0.5 0 0" shader="flat"></a-cylinder>' +
+          '<a-sphere radius="0.4" color="#161613" shader="flat"></a-sphere>' +
+          '<a-cylinder color="#23231e" height="0.3" radius="0.0" rotation="0 0 90" position="0.5 0 0" shader="flat"></a-cylinder>' +
+          '<a-box color="#2E2E28" depth="2" height="2" width="0.05" position="0.7 0 0" shader="flat"></a-box>';
+
+        return base;
+      };
+
+      /**
+       * Generate fighters squadron
+       * @param  {Object} attrs
+       * @param  {String} animationEventBegin
+       * @return {DOMElement}
+       */
+
+      var squadron = function(attrs, animationEventBegin) {
+        var base = document.createElement('a-entity');
+        var animation;
+        var opacityAnimation;
+        var animationDur;
+
+        if (attrs) {
+          for (var a in attrs) {
+            base.setAttribute(a, attrs[a]);
+          }
+        }
+
+        if (animationEventBegin) {
+          animation = document.createElement('a-animation');
+          animationDur = ((Math.random() * 0.5) + 0.5) * 60 * 1000;
+
+          base.setAttribute('visible', false);
+
+          animation.setAttribute('dur', animationDur);
+          animation.setAttribute('begin', animationEventBegin);
+
+          if (attrs.position) {
+            animation.setAttribute('attribute', 'position');
+            animation.setAttribute('to', attrs.position.split(' ').slice(0, 2).join(' ') + ' 19');
+          }
+
+          base.appendChild(animation);
+        }
+
+        base.appendChild(simpleFighter({ position: '-2.5 0 -1' }));
+        base.appendChild(simpleFighter());
+        base.appendChild(simpleFighter({ position: '2.5 0 -1' }));
+
+        return base;
+      };
+
+      // Build squadrons
+      var squadrons = [
+        squadron({ scale: '0.2 0.2 0.2', position: '-9 -3.5 -1.5' }, 'move-squadron'),
+        squadron({ scale: '0.3 0.3 0.3', position: '-6 -6 -1.5' }, 'move-squadron'),
+        squadron({ scale: '0.3 0.3 0.3', position: '6 -4 -1' }, 'move-squadron')
+      ];
+
+      squadrons.forEach(function(squadron, index) {
+        scene.appendChild(squadron).id = 'squadron-' + (index + 1);
+      });
+
+      // Animations
+      function moveSquadronsRandomly() {
+        squadrons.forEach(function(squadron, index) {
+          setTimeout(function() {
+            scene.querySelector('#squadron-' + (index + 1)).emit('move-squadron');
+          }, (Math.random() * 2000) + 500);
+        });
+      }
+
+      function updateFighterPosition(props) {
+        fighter.setAttribute('position', { x: props.x, y: props.y, z: props.z });
+      }
+
+      function startFighterFlight() {
+        var position = fighter.getAttribute('position');
+
+        var props = {
+          x: position.x,
+          y: position.y,
+          z: position.z
+        };
+
+        // To make main fighter fly along curve, use bezier curve from
+        // GSAP's TweenMax function
+        var tweenPosition = TweenMax.to(props, 5, {
+          delay: 5,
+          repeatDelay: 5,
+          repeat: -1,
+          bezier: {
+            type: 'quadratic',
+            values: [{ y: 15, z: -30 }, { y: -3, z: -30 }, { y: 1, z: 70 }]
+          },
+          onStart: function() {
+            fighter.setAttribute('visible', 'true');
+            fighter.components.sound.play();
+          },
+          onRepeat: function() {
+            fighter.components.sound.play();
+          },
+          onComplete: function() {
+            fighter.setAttribute('visible', 'false');
+            fighter.components.sound.pause();
+          },
+          onUpdate: updateFighterPosition,
+          onUpdateParams: [props]
+        });
+      }
+
+      function playDestroyersSounds() {
+        destroyerLeft.components.sound.play();
+
+        setTimeout(function() {
+          destroyerRight.components.sound.play();
+        }, 300);
+      }
+
+      // Repeat squadrons animation
+      scene.addEventListener('animationstart', function(event) {
+        var squadron = event.target.parentElement;
+
+        squadron.setAttribute('visible', true);
+      });
+
+      scene.addEventListener('animationend', function(event) {
+        var squadron = event.target.parentElement;
+
+        squadron.setAttribute('visible', false);
+        squadron.emit('move-squadron');
+      });
+
+      // Launch everything when main fighter model is loaded
+      fighter.addEventListener('model-loaded', function() {
+        moveSquadronsRandomly();
+        startFighterFlight();
+        playDestroyersSounds();
+      });
+    })(window, document);
+  </script>
+</body>
+</html>
